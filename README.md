@@ -6,71 +6,11 @@ to an MCP-capable LLM (Claude Desktop, LM Studio, Continue, etc.) through a
 mix of **semantic tools** for common tasks and a **universal dispatcher** for
 everything else.
 
-## Install / configure
+The server speaks MCP over **HTTP (Streamable HTTP + SSE)** on port 3000 —
+a long-running service that any MCP client supporting the Streamable HTTP
+transport can connect to.
 
-The server ships two transports:
-
-- **stdio** (default, `emby-mcp-server` binary) — the classic MCP transport.
-  One process per client, spawned by the MCP host (Claude Desktop, etc.).
-- **HTTP / Streamable HTTP with SSE** (`emby-mcp-server-http` binary or the
-  Docker image's default command) — a long-running HTTP server on port 3000
-  that multiple clients can share.
-
-### Option A — MCP client launches a local stdio process (npm)
-
-Add to your MCP client's server config. For Claude Desktop this is
-`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or
-`%APPDATA%\Claude\claude_desktop_config.json` on Windows:
-
-```jsonc
-{
-  "mcpServers": {
-    "emby": {
-      "command": "npx",
-      "args": ["-y", "@emby-utils/server"],
-      "env": {
-        "EMBY_HOST": "http://emby.local:8096",
-        "EMBY_API_KEY": "your-api-key",
-      },
-    },
-  },
-}
-```
-
-A local `.env` file in the working directory is auto-loaded if present;
-set `EMBY_ENV_FILE=/custom/path/.env` to override.
-
-### Option B — MCP client launches a stdio process inside Docker
-
-```jsonc
-{
-  "mcpServers": {
-    "emby": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "EMBY_HOST",
-        "-e",
-        "EMBY_API_KEY",
-        "ghcr.io/vromero/emby-utils-mcp:latest",
-        "emby-mcp-server",
-      ],
-      "env": {
-        "EMBY_HOST": "http://emby.local:8096",
-        "EMBY_API_KEY": "your-api-key",
-      },
-    },
-  },
-}
-```
-
-`-i` is mandatory — stdio needs stdin attached. Passing `emby-mcp-server` as
-the command overrides the image's default (HTTP mode) to run the stdio bin.
-
-### Option C — Long-running HTTP/SSE server via Docker Compose
+## Quick start — Docker Compose
 
 ```bash
 git clone https://github.com/vromero/emby-utils-mcp
@@ -81,25 +21,51 @@ curl http://localhost:3000/healthz
 # {"status":"ok"}
 ```
 
-The server exposes:
+Then point your MCP client at `http://localhost:3000/mcp`.
 
-- `GET  /healthz` — JSON `{"status":"ok"}` for healthchecks.
-- `GET  /mcp` — SSE stream for server → client messages.
-- `POST /mcp` — JSON-RPC from client → server.
+## Quick start — Docker run
 
-Override the bind address with `EMBY_MCP_HOST` (default `0.0.0.0`) and port
-with `EMBY_MCP_PORT` (default `3000`).
+```bash
+docker run -d --name emby-mcp \
+  -p 3000:3000 \
+  -e EMBY_HOST=http://emby.local:8096 \
+  -e EMBY_API_KEY=your-api-key \
+  --restart unless-stopped \
+  ghcr.io/vromero/emby-utils-mcp:latest
+```
 
-Any MCP client that speaks the Streamable HTTP transport can then point at
-`http://localhost:3000/mcp`.
-
-### Running without Docker
+## Quick start — Node
 
 ```bash
 npm install -g @emby-utils/server
-EMBY_HOST=... EMBY_API_KEY=... emby-mcp-server          # stdio
-EMBY_HOST=... EMBY_API_KEY=... emby-mcp-server-http     # HTTP on 3000
+EMBY_HOST=http://emby.local:8096 \
+EMBY_API_KEY=your-api-key \
+  emby-mcp-server
+# Emby MCP Server listening on http://0.0.0.0:3000 (MCP: /mcp, health: /healthz)
 ```
+
+## Configuration
+
+Environment variables:
+
+| Variable        | Default    | Description                                     |
+| --------------- | ---------- | ----------------------------------------------- |
+| `EMBY_HOST`     | _required_ | Emby server URL (e.g. `http://emby.local:8096`) |
+| `EMBY_API_KEY`  | _required_ | Emby API key                                    |
+| `EMBY_MCP_HOST` | `0.0.0.0`  | Bind address                                    |
+| `EMBY_MCP_PORT` | `3000`     | Bind port                                       |
+| `EMBY_ENV_FILE` | `./.env`   | Optional path to a `.env` file to auto-load     |
+
+## Endpoints
+
+| Path       | Method | Purpose                                  |
+| ---------- | ------ | ---------------------------------------- |
+| `/mcp`     | GET    | SSE stream for server-initiated messages |
+| `/mcp`     | POST   | Client-to-server JSON-RPC                |
+| `/healthz` | GET    | Health probe (`{"status":"ok"}`)         |
+
+Runs in **stateless mode** (`sessionIdGenerator: undefined`) — no in-memory
+session state, so the container scales horizontally without sticky sessions.
 
 ## Tools exposed
 
@@ -134,19 +100,6 @@ params and type mismatches.
 ## Programmatic use
 
 ```ts
-import { createServerFromConfig } from "@emby-utils/server";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-
-const { server } = createServerFromConfig({
-  host: process.env.EMBY_HOST!,
-  apiKey: process.env.EMBY_API_KEY!,
-});
-await server.connect(new StdioServerTransport());
-```
-
-For HTTP:
-
-```ts
 import { startHttpServer } from "@emby-utils/server/dist/http.js";
 
 const started = await startHttpServer({
@@ -166,9 +119,6 @@ Tags:
 - `latest` — most recent release.
 - `vX.Y.Z` / `vX.Y` / `vX` — semver variants for pinning.
 - `sha-<full-commit-sha>` — exact build for reproducibility.
-
-The default command runs the HTTP/SSE server; override with `emby-mcp-server`
-to run stdio.
 
 ## License
 

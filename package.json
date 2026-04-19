@@ -1,13 +1,12 @@
 {
   "name": "@emby-utils/server",
   "version": "0.1.0",
-  "description": "Model Context Protocol (MCP) server exposing the full Emby API. Supports stdio and HTTP/SSE transports.",
+  "description": "Model Context Protocol (MCP) server exposing the full Emby API over HTTP (Streamable HTTP + SSE).",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "emby-mcp-server": "./dist/bin.js",
-    "emby-mcp-server-http": "./dist/bin-http.js"
+    "emby-mcp-server": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -22,7 +21,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/bin.js",
-    "start:http": "node dist/bin-http.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "node -e \"import('node:fs').then(f=>f.rmSync('dist',{recursive:true,force:true}))\"",

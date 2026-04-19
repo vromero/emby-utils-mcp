@@ -1,4 +1,4 @@
-﻿import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { EmbyClient } from "@emby-utils/client";
 import { EmbyMcpHandler } from "./handler.js";
@@ -7,8 +7,9 @@ export { EmbyMcpHandler } from "./handler.js";
 export type { McpTextContent, McpToolResponse } from "./handler.js";
 
 /**
- * Build a configured MCP server. Exported as a separate function from any
- * runtime bootstrap so tests can exercise the wiring without stdio.
+ * Build a configured MCP server. Exported as a separate function from the
+ * HTTP bootstrap so tests can exercise the wiring without starting a
+ * listener.
  */
 export function createServer(handler: EmbyMcpHandler): McpServer {
   const server = new McpServer({

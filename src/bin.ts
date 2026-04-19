@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 /**
- * stdio entry point for the Emby MCP server.
- * Reads EMBY_HOST and EMBY_API_KEY from the environment. Supports a local
- * `.env` file (auto-loaded if present in the current working directory)
- * or an explicit path via `EMBY_ENV_FILE=/path/to/.env`.
+ * HTTP/SSE entry point for the Emby MCP server.
+ *
+ * Reads EMBY_HOST and EMBY_API_KEY from the environment (or an auto-loaded
+ * `.env` file in CWD). Binding defaults to `0.0.0.0:3000` so the container
+ * is reachable by default; override with EMBY_MCP_HOST / EMBY_MCP_PORT.
+ *
+ * Endpoints:
+ *   GET  /mcp      - SSE stream for server-initiated messages
+ *   POST /mcp      - Client-to-server JSON-RPC
+ *   GET  /healthz  - `{"status":"ok"}` for container healthchecks
  */
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServerFromConfig } from "./index.js";
+import { startHttpServer } from "./http.js";
 import { loadEnv } from "./env.js";
 
 function requireEnv(name: string): string {
@@ -22,10 +27,31 @@ async function main() {
   loadEnv();
   const host = requireEnv("EMBY_HOST");
   const apiKey = requireEnv("EMBY_API_KEY");
-  const { server } = createServerFromConfig({ host, apiKey });
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Emby MCP Server running on stdio");
+  const bindHost = process.env.EMBY_MCP_HOST ?? "0.0.0.0";
+  const portRaw = process.env.EMBY_MCP_PORT ?? "3000";
+  const port = Number.parseInt(portRaw, 10);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    console.error(`Invalid EMBY_MCP_PORT: ${portRaw}`);
+    process.exit(1);
+  }
+
+  const started = await startHttpServer({ host, apiKey, bindHost, port });
+  console.error(
+    `Emby MCP Server listening on http://${started.bindHost}:${started.port} (MCP: /mcp, health: /healthz)`
+  );
+
+  const shutdown = (signal: string) => {
+    console.error(`Received ${signal}, shutting down...`);
+    started
+      .close()
+      .then(() => process.exit(0))
+      .catch((err) => {
+        console.error("Error during shutdown:", err);
+        process.exit(1);
+      });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((error) => {

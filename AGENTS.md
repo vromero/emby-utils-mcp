@@ -2,14 +2,11 @@
 
 ## What this repo is
 
-Standalone npm package `@emby-utils/server`. An MCP (Model Context Protocol) server that exposes the full Emby API to MCP-capable LLM clients. Two transports:
-
-- **stdio** — binary `emby-mcp-server` (src/bin.ts)
-- **HTTP / Streamable HTTP with SSE** — binary `emby-mcp-server-http` (src/bin-http.ts), default command in the Docker image. Listens on `0.0.0.0:3000` by default.
+Standalone npm package `@emby-utils/server`. An MCP (Model Context Protocol) server that exposes the full Emby API to MCP-capable LLM clients over **HTTP / Streamable HTTP with SSE** (no stdio transport). Binary: `emby-mcp-server` (`src/bin.ts`). Listens on `0.0.0.0:3000` by default.
 
 Depends on the separately-published `@emby-utils/client` (GitHub: `vromero/emby-utils-client`). A sibling CLI package ships from `vromero/emby-utils-cli`.
 
-The `emby-mcp-server` binary name intentionally keeps the `mcp` marker so users can tell what protocol the binary speaks; the npm package is scoped under `@emby-utils/`.
+The `emby-mcp-server` binary name intentionally keeps the `mcp` marker so users can tell what protocol the service speaks; the npm package is scoped under `@emby-utils/`.
 
 Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch (amd64 + arm64). See `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.github/workflows/docker-publish.yml`.
 
@@ -18,22 +15,22 @@ Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch
 - ESM-only (`"type": "module"`). Use `.js` extensions in relative TypeScript imports (NodeNext resolution).
 - Node >=22.13 (enforced in `engines`).
 - Required env at runtime: `EMBY_HOST` + `EMBY_API_KEY`. The bin auto-loads `.env` from CWD if present. Override path with `EMBY_ENV_FILE`.
+- Bind configuration: `EMBY_MCP_HOST` (default `0.0.0.0`), `EMBY_MCP_PORT` (default `3000`).
 
 ## Commands
 
 - `npm install` — deps.
 - `npm run build` — `tsc -p tsconfig.build.json`.
-- `npm start` — runs the compiled stdio server.
+- `npm start` — runs the compiled HTTP server (`dist/bin.js`).
 - `npm test` — Vitest.
 - `npm run lint` / `lint:fix`, `npm run format` / `format:check`.
 - `npm run release:dry` — preview publish.
 
 ## Architecture
 
-- `src/bin.ts` — stdio entrypoint. Reads env, wires up client + handler + server, connects the stdio transport.
-- `src/bin-http.ts` — HTTP/SSE entrypoint. Reads env, calls `startHttpServer()`, handles SIGTERM/SIGINT shutdown.
+- `src/bin.ts` — HTTP entrypoint. Reads env, calls `startHttpServer()`, handles SIGTERM/SIGINT shutdown. This is the **only** binary; there is no stdio transport.
 - `src/http.ts` — `startHttpServer({ host, apiKey, bindHost?, port? })`. Creates the MCP server, wraps `StreamableHTTPServerTransport` in stateless mode (`sessionIdGenerator: undefined`), exposes `GET /mcp`, `POST /mcp`, `GET /healthz`. Returns `{ httpServer, port, bindHost, close }`.
-- `src/index.ts` — exports `createServer(handler)` and `createServerFromConfig({host, apiKey})`. Keeps the server building testable without touching stdio.
+- `src/index.ts` — exports `createServer(handler)` and `createServerFromConfig({host, apiKey})`. Keeps the server construction testable.
 - `src/handler.ts` — `EmbyMcpHandler` facade composing per-domain handlers and keeping a flat back-compat API (`getServerInfo`, `listMedia`, etc.).
 - `src/handlers/{system,users,items,sessions,libraries,plugins,registry}.ts` — per-domain handlers; `base.ts` provides shared ok/fail serialization.
 - `registry.ts` exposes `emby_invoke`, `emby_list_operations`, `emby_describe_operation`, `emby_raw_request`. `emby_invoke` validates path params strictly and query params permissively (Emby's spec is incomplete for many query params); pass `strict: true` to make them errors. Unknown operationIds get Levenshtein-based suggestions.

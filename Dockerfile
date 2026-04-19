@@ -3,10 +3,10 @@
 # Multi-stage image for @emby-utils/server. The runtime stage is a minimal
 # node:22-alpine with only production deps and compiled dist/.
 #
-# Default entrypoint is the HTTP/SSE server on port 3000 so the image is
-# usable out of the box. Switch to the stdio bin by overriding CMD:
-#   docker run -i --rm -e EMBY_HOST=... -e EMBY_API_KEY=... \
-#     ghcr.io/vromero/emby-utils-mcp emby-mcp-server
+# The server runs HTTP/SSE on port 3000:
+#   docker run --rm -p 3000:3000 \
+#     -e EMBY_HOST=... -e EMBY_API_KEY=... \
+#     ghcr.io/vromero/emby-utils-mcp
 #
 # Build arg CLIENT_TARBALL (optional): when set, must be a path **inside the
 # build context** to a pre-built `@emby-utils/client` .tgz (produced by
@@ -57,7 +57,7 @@ FROM node:22-alpine AS runtime
 
 # Labels for GHCR discoverability.
 LABEL org.opencontainers.image.source="https://github.com/vromero/emby-utils-mcp"
-LABEL org.opencontainers.image.description="Model Context Protocol (MCP) server for Emby (stdio + HTTP/SSE)."
+LABEL org.opencontainers.image.description="Model Context Protocol (MCP) server for Emby (HTTP/SSE)."
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Don't run Node as root.
@@ -76,11 +76,9 @@ ENV NODE_ENV=production \
 
 EXPOSE 3000
 
-# Healthcheck hits /healthz on the HTTP server. It's a no-op if the user
-# overrides CMD to run the stdio bin (stdio mode exits as soon as stdin
-# closes anyway, so the healthcheck not matching is harmless).
+# Healthcheck hits /healthz on the HTTP server.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.EMBY_MCP_PORT || 3000) + '/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Default: HTTP/SSE on 0.0.0.0:3000.
-CMD ["node", "dist/bin-http.js"]
+# HTTP/SSE on 0.0.0.0:3000.
+CMD ["node", "dist/bin.js"]

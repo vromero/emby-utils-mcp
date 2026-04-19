@@ -1,4 +1,4 @@
-# Run the Emby MCP server in HTTP/SSE mode.
+# Run the Emby MCP server (HTTP / Streamable HTTP with SSE on port 3000).
 #
 # Quickstart:
 #   cp .env.example .env          # edit EMBY_HOST / EMBY_API_KEY
