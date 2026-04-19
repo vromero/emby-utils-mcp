@@ -1,0 +1,7 @@
+import { BaseHandler, McpToolResponse } from "./base.js";
+
+export class LibrariesHandler extends BaseHandler {
+  async list(): Promise<McpToolResponse> {
+    return this.safeCall(() => this.emby.callOperation("getLibraryVirtualfolders"));
+  }
+}
