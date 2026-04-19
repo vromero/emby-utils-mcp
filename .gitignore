@@ -27,3 +27,9 @@ Thumbs.db
 
 # Test artefacts
 *.msw-cache
+
+# Local Docker build artefacts (e.g. @emby-utils/client .tgz staged by
+# `npm pack` before the client is published). The `docker/` dir itself stays
+# tracked via README.md and .gitkeep.
+docker/*.tgz
+
