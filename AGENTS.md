@@ -94,8 +94,9 @@ Alternatively, `npm link` works for a symlink-based workflow.
 
 ## Publishing
 
-- `publishConfig.access: "public"`. Versioning via **changesets**.
-- Flow: `npx changeset` → describe → `npm run version` → `npm run release:dry` → `npm run release`.
+- Published to npm as `@emby-utils/server` (scope-public). `publishConfig.access: "public"` in `package.json`.
+- A `prepack` script runs `npm run build` so `npm publish` (or `npm pack`) always ships a fresh `dist/`.
+- Flow: bump `version` in `package.json`, `npm run release:dry` to preview the tarball contents, `npm run release` to publish. Finally tag `vX.Y.Z` in git and push to trigger `.github/workflows/docker-publish.yml`.
 
 ## CI
 
