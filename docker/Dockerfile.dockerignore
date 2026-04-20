@@ -1,0 +1,52 @@
+# Keep the build context small and stable. The build context is the repo
+# root; the Dockerfile consumes: package.json, package-lock.json*, src/,
+# config/tsconfig*.json, and (optionally) local/*.tgz.
+#
+# BuildKit auto-picks this file when running `docker build -f docker/Dockerfile`.
+
+# VCS
+.git
+.gitignore
+
+# CI / hooks
+.github
+.config
+
+# IDE
+.vscode
+.idea
+
+# Changesets + changelog metadata
+.changeset
+
+# Build / test artefacts
+node_modules
+dist
+coverage
+
+# Tests (image is runtime-only)
+tests
+
+# Linter + formatter configs (not needed inside the build)
+config/eslint.config.js
+config/prettier.config.mjs
+config/.prettierignore
+config/vitest.config.ts
+
+# Docker directory itself (the Dockerfile is passed explicitly via -f; nothing
+# from docker/ needs to enter the image). Note `.env.example` sits here too.
+docker
+
+# Documentation
+AGENTS.md
+README.md
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs + OS noise
+*.log
+.DS_Store
+Thumbs.db

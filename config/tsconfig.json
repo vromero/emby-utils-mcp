@@ -11,8 +11,10 @@
     "declarationMap": true,
     "sourceMap": true,
     "types": ["node"],
-    "outDir": "./dist",
-    "rootDir": "./src"
+    // Paths resolve relative to this file, which lives in config/. The
+    // repo-root `src/` and `dist/` are one level up.
+    "outDir": "../dist",
+    "rootDir": "../src"
   },
-  "include": ["src/**/*"]
+  "include": ["../src/**/*"]
 }

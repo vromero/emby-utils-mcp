@@ -1,0 +1,43 @@
+# Run the Emby MCP server (HTTP / Streamable HTTP with SSE on port 3000).
+#
+# Run via the npm script wrappers from the repo root:
+#   npm run docker:up      # starts in the background
+#   npm run docker:down    # stops and removes the container
+#
+# Or directly:
+#   docker compose -f docker/docker-compose.yml --project-directory docker up -d
+#
+# Configure via a docker/.env file (copied from docker/.env.example):
+#   EMBY_HOST=http://emby.local:8096
+#   EMBY_API_KEY=your-api-key
+#
+# MCP clients that support the Streamable HTTP transport can then point at
+# `http://localhost:3000/mcp`.
+#
+# To build locally against a not-yet-published @emby-utils/client tarball,
+# drop the tarball into `local/` at the repo root (see local/README.md) and
+# uncomment the `build` block below.
+
+services:
+  emby-mcp:
+    image: ghcr.io/vromero/emby-utils-mcp:latest
+    # Uncomment to build locally instead of pulling from GHCR. Build context
+    # is the repo root so the Dockerfile can `COPY src`, `COPY config/...`,
+    # and `COPY local/...` as usual.
+    # build:
+    #   context: ..
+    #   dockerfile: docker/Dockerfile
+    #   args:
+    #     CLIENT_TARBALL: ""   # e.g. local/emby-utils-client-0.1.0.tgz
+    container_name: emby-mcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      EMBY_HOST: ${EMBY_HOST:?EMBY_HOST is required}
+      EMBY_API_KEY: ${EMBY_API_KEY:?EMBY_API_KEY is required}
+      # Override MCP server bind address / port if needed.
+      EMBY_MCP_HOST: 0.0.0.0
+      EMBY_MCP_PORT: "3000"
+    # The image already declares a HEALTHCHECK hitting /healthz; compose
+    # surfaces its state via `docker compose ps`.

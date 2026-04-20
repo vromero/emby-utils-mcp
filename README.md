@@ -10,18 +10,39 @@ The server speaks MCP over **HTTP (Streamable HTTP + SSE)** on port 3000 —
 a long-running service that any MCP client supporting the Streamable HTTP
 transport can connect to.
 
+## Repository layout
+
+Tooling and ops artefacts are grouped under subdirectories to keep the root
+uncluttered:
+
+```
+src/              TypeScript sources (entrypoint: src/bin.ts)
+tests/            Vitest suite
+config/           tsconfig, eslint, prettier, vitest configs
+docker/           Dockerfile, docker-compose.yml, .env.example, ignore file
+local/            Gitignored staging for ephemeral build inputs (e.g. .tgz)
+.config/husky/    Git hooks (installed by husky on `npm install`)
+```
+
+All `npm` scripts and workflows work from the repo root; the indirection to
+`config/` / `docker/` is handled by the scripts themselves.
+
 ## Quick start — Docker Compose
 
 ```bash
 git clone https://github.com/vromero/emby-utils-mcp
 cd emby-utils-mcp
-cp .env.example .env    # fill in EMBY_HOST and EMBY_API_KEY
-docker compose up -d
+cp docker/.env.example docker/.env    # fill in EMBY_HOST and EMBY_API_KEY
+npm run docker:up                     # wraps `docker compose -f docker/docker-compose.yml ...`
 curl http://localhost:3000/healthz
 # {"status":"ok"}
 ```
 
 Then point your MCP client at `http://localhost:3000/mcp`.
+
+Stop with `npm run docker:down`. The underlying compose file lives at
+`docker/docker-compose.yml`; if you'd rather call `docker compose` directly,
+use `docker compose -f docker/docker-compose.yml --project-directory docker up -d`.
 
 ## Quick start — Docker run
 
@@ -48,13 +69,13 @@ EMBY_API_KEY=your-api-key \
 
 Environment variables:
 
-| Variable        | Default    | Description                                     |
-| --------------- | ---------- | ----------------------------------------------- |
-| `EMBY_HOST`     | _required_ | Emby server URL (e.g. `http://emby.local:8096`) |
-| `EMBY_API_KEY`  | _required_ | Emby API key                                    |
-| `EMBY_MCP_HOST` | `0.0.0.0`  | Bind address                                    |
-| `EMBY_MCP_PORT` | `3000`     | Bind port                                       |
-| `EMBY_ENV_FILE` | `./.env`   | Optional path to a `.env` file to auto-load     |
+| Variable        | Default    | Description                                                                                      |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `EMBY_HOST`     | _required_ | Emby server URL (e.g. `http://emby.local:8096`)                                                  |
+| `EMBY_API_KEY`  | _required_ | Emby API key                                                                                     |
+| `EMBY_MCP_HOST` | `0.0.0.0`  | Bind address                                                                                     |
+| `EMBY_MCP_PORT` | `3000`     | Bind port                                                                                        |
+| `EMBY_ENV_FILE` | `./.env`   | Optional path to a `.env` file to auto-load (defaults to `docker/.env` when running via Compose) |
 
 ## Endpoints
 

@@ -8,7 +8,31 @@ Depends on the separately-published `@emby-utils/client` (GitHub: `vromero/emby-
 
 The `emby-mcp-server` binary name intentionally keeps the `mcp` marker so users can tell what protocol the service speaks; the npm package is scoped under `@emby-utils/`.
 
-Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch (amd64 + arm64). See `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.github/workflows/docker-publish.yml`.
+Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch (amd64 + arm64). Docker assets live under `docker/`: `Dockerfile`, `Dockerfile.dockerignore`, `docker-compose.yml`, `.env.example`. Publish workflow is `.github/workflows/docker-publish.yml`.
+
+## Repository layout
+
+Tooling and ops configs are grouped under subdirectories to keep the root lean:
+
+| Path             | Contents                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/`           | TypeScript sources. Entry is `src/bin.ts`.                                                                                |
+| `tests/`         | Vitest suite. MSW setup in `tests/setup.ts`; host/key constants in `tests/constants.ts`.                                  |
+| `config/`        | `tsconfig.json`, `tsconfig.build.json`, `eslint.config.js`, `prettier.config.mjs`, `.prettierignore`, `vitest.config.ts`. |
+| `docker/`        | `Dockerfile`, `Dockerfile.dockerignore`, `docker-compose.yml`, `.env.example`, `README.md`.                               |
+| `local/`         | Gitignored staging for ephemeral build inputs (`*.tgz` for `CLIENT_TARBALL`).                                             |
+| `.config/husky/` | Pre-commit hook. Husky is wired via `"prepare": "husky .config/husky"` in `package.json`.                                 |
+| `.changeset/`    | Changesets metadata (tool-locked path).                                                                                   |
+| `.github/`       | CI + release workflows (tool-locked path).                                                                                |
+
+All `npm` scripts invoke the underlying tools with explicit `-c` / `-p` / `--config` flags pointing at `config/`, so the indirection is invisible to contributors.
+
+### Why the non-standard layout for tooling
+
+- No root-level `tsconfig.json`. IDEs that auto-detect TypeScript projects need to be pointed at `config/tsconfig.json` (VS Code: set `"typescript.tsconfigPath"` per-workspace).
+- No root-level `.prettierrc.*`. Editor Prettier integrations either need `--config config/prettier.config.mjs` or a workspace-level setting. CLI calls work because npm scripts pass `--config` explicitly.
+- `Dockerfile.dockerignore` is BuildKit's per-Dockerfile ignore convention (Docker 23+). BuildKit auto-picks it when you run `docker build -f docker/Dockerfile`. No separate flag needed.
+- `docker compose` is always invoked from the repo root with `-f docker/docker-compose.yml --project-directory docker`, so the compose file can reference a local `.env` via its own directory and builds get the repo-root context they need.
 
 ## Setup & Environment
 
@@ -19,11 +43,14 @@ Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch
 
 ## Commands
 
-- `npm install` — deps.
-- `npm run build` — `tsc -p tsconfig.build.json`.
+- `npm install` — deps. Runs `husky .config/husky` via the `prepare` script to wire the Git hook dir to `.config/husky/`.
+- `npm run build` — `tsc -p config/tsconfig.build.json`.
 - `npm start` — runs the compiled HTTP server (`dist/bin.js`).
-- `npm test` — Vitest.
-- `npm run lint` / `lint:fix`, `npm run format` / `format:check`.
+- `npm test` — `vitest run --config config/vitest.config.ts`. The config file sets `root: ".."` so Vitest resolves `tests/**/*.test.ts` at the repo root.
+- `npm run lint` / `lint:fix` — ESLint via `-c config/eslint.config.js`.
+- `npm run format` / `format:check` — Prettier via `--config config/prettier.config.mjs --ignore-path config/.prettierignore`.
+- `npm run docker:build` — `docker build -f docker/Dockerfile -t emby-utils-mcp:dev .`.
+- `npm run docker:up` / `docker:down` — wraps `docker compose -f docker/docker-compose.yml --project-directory docker ...`.
 - `npm run release:dry` — preview publish.
 
 ## Architecture
@@ -41,7 +68,7 @@ Also shipped as an OCI image: `ghcr.io/vromero/emby-utils-mcp:<tag>`, multi-arch
 - `tests/mcp-server.test.ts` reaches into `McpServer._registeredTools` (private). If the SDK changes its internals, update this test rather than deleting it.
 - `tests/http.test.ts` **does not** import `./setup.js`. The MSW server registered there has `onUnhandledRequest: "error"` and would reject the real fetches the test issues to our own loopback HTTP server. The HTTP tests only exercise endpoints that never touch Emby (`/healthz`, MCP `initialize`), so MSW isn't needed.
 - `StreamableHTTPServerTransport` is run in **stateless** mode (`sessionIdGenerator: undefined`). No in-memory session state, so the container scales horizontally without sticky sessions.
-- The Dockerfile accepts a `CLIENT_TARBALL` build-arg that points at a file inside the build context (staged under `docker/`). Used to build the image against a locally-packed `@emby-utils/client` before it is published to npm. Once published, the arg can be omitted and the Dockerfile resolves the dep from the registry.
+- The Dockerfile accepts a `CLIENT_TARBALL` build-arg that points at a file inside the build context. Default staging path is `local/<tarball>.tgz` (the `local/` dir is gitignored and always present via `.gitkeep`). Used to build the image against a locally-packed `@emby-utils/client` before it is published to npm; once published, the arg can be omitted and the Dockerfile resolves the dep from the registry.
 
 ## Cross-repo development
 

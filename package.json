@@ -19,28 +19,31 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p config/tsconfig.build.json",
     "start": "node dist/bin.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --config config/vitest.config.ts",
+    "test:watch": "vitest --config config/vitest.config.ts",
     "clean": "node -e \"import('node:fs').then(f=>f.rmSync('dist',{recursive:true,force:true}))\"",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "lint": "eslint -c config/eslint.config.js .",
+    "lint:fix": "eslint -c config/eslint.config.js . --fix",
+    "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",
+    "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
+    "docker:build": "docker build -f docker/Dockerfile -t emby-utils-mcp:dev .",
+    "docker:up": "docker compose -f docker/docker-compose.yml --project-directory docker up -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml --project-directory docker down",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
     "release": "npm run build && changeset publish",
     "release:dry": "npm run build && npm publish --dry-run --access public",
-    "prepare": "husky"
+    "prepare": "husky .config/husky"
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [
-      "eslint --fix",
-      "prettier --write"
+      "eslint -c config/eslint.config.js --fix",
+      "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write"
     ],
     "*.{json,md,yml,yaml}": [
-      "prettier --write"
+      "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write"
     ]
   },
   "engines": {
