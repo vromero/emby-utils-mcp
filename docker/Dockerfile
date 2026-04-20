@@ -18,11 +18,6 @@
 #     -e EMBY_HOST=... -e EMBY_API_KEY=... \
 #     ghcr.io/vromero/emby-utils-mcp
 #
-# `@emby-utils/client` is declared in package.json as a GitHub dependency
-# (`github:vromero/emby-utils-client#main`). npm clones and builds it during
-# install via the client's `prepare` script, so no pre-packed tarball or
-# registry publish is required.
-#
 # Ignore file: `docker/Dockerfile.dockerignore` (BuildKit picks it up
 # automatically when building with `-f docker/Dockerfile`).
 
@@ -30,10 +25,6 @@
 # Stage 1: build (TypeScript -> dist/)
 ############################################
 FROM node:22-alpine AS build
-
-# `git` is needed so npm can clone the `@emby-utils/client` GitHub
-# dependency; Alpine doesn't ship it in the base image.
-RUN apk add --no-cache git
 
 WORKDIR /app
 

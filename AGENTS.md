@@ -4,7 +4,7 @@
 
 Standalone npm package `@emby-utils/server`. An MCP (Model Context Protocol) server that exposes the full Emby API to MCP-capable LLM clients over **HTTP / Streamable HTTP with SSE** (no stdio transport). Binary: `emby-mcp-server` (`src/bin.ts`). Listens on `0.0.0.0:3000` by default.
 
-Depends on `@emby-utils/client`, which is installed **directly from GitHub** (`github:vromero/emby-utils-client#main`) rather than from the npm registry. The client's `prepare` script compiles it to `dist/` during install, so consumers receive a ready-to-use package without any pre-publish step. A sibling CLI package ships from `vromero/emby-utils-cli`.
+Depends on `@emby-utils/client` from the npm registry (published from `vromero/emby-utils-client`). A sibling CLI package ships from `vromero/emby-utils-cli`.
 
 The `emby-mcp-server` binary name intentionally keeps the `mcp` marker so users can tell what protocol the service speaks; the npm package is scoped under `@emby-utils/`.
 
@@ -67,21 +67,24 @@ All `npm` scripts invoke the underlying tools with explicit `-c` / `-p` / `--con
 - `tests/mcp-server.test.ts` reaches into `McpServer._registeredTools` (private). If the SDK changes its internals, update this test rather than deleting it.
 - `tests/http.test.ts` **does not** import `./setup.js`. The MSW server registered there has `onUnhandledRequest: "error"` and would reject the real fetches the test issues to our own loopback HTTP server. The HTTP tests only exercise endpoints that never touch Emby (`/healthz`, MCP `initialize`), so MSW isn't needed.
 - `StreamableHTTPServerTransport` is run in **stateless** mode (`sessionIdGenerator: undefined`). No in-memory session state, so the container scales horizontally without sticky sessions.
-- The Dockerfile installs `git` in the build stage because npm needs it to clone the `github:vromero/emby-utils-client` dependency. Sets `HUSKY=0` so the dev-dep's husky `prepare` skip is explicit rather than relying on husky's silent no-op when `.git` is absent.
+- The Dockerfile sets `HUSKY=0` so the husky `prepare` script skip is explicit; without it, husky v9 also short-circuits silently because there's no `.git/` dir in the image, but the env var removes the reliance on that quirk.
 
 ## Cross-repo development
 
-To test against local, unreleased `@emby-utils/client` changes, point the dependency at a local path instead of the GitHub ref:
+To test against local, unreleased `@emby-utils/client` changes, point the dependency at a local path or GitHub ref instead of the published version:
 
 ```bash
-# In this repo:
+# Local checkout:
 npm install --save ../emby-utils-client
-# ...iterate...
-# When done, restore the GitHub ref:
-npm install --save "github:vromero/emby-utils-client#main"
+
+# Unpublished GitHub branch:
+npm install --save "github:vromero/emby-utils-client#some-branch"
+
+# When done, restore the npm version:
+npm install --save "@emby-utils/client@^0.1.0"
 ```
 
-Alternatively, `npm link` still works if you prefer a symlink-based workflow.
+Alternatively, `npm link` works for a symlink-based workflow.
 
 ## Testing
 

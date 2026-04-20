@@ -27,9 +27,6 @@ npm run docker:down    # docker compose -f docker/docker-compose.yml ... down
 
 ## About the `@emby-utils/client` dependency
 
-`@emby-utils/client` is pulled directly from its GitHub repo
-(`github:vromero/emby-utils-client#main`) rather than from the npm registry.
-The client's own `prepare` script compiles it to `dist/` during `npm install`,
-so consumers — including this Dockerfile — get a ready-to-use package without
-any extra tooling. `git` is added to the build stage (Alpine doesn't ship it
-by default) so npm can clone the dep.
+`@emby-utils/client` is installed from the npm registry like any other
+published dependency. The build stage uses `npm ci` for a reproducible,
+lockfile-driven install.
