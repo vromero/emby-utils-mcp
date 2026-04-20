@@ -116,11 +116,20 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Start
   };
 }
 
+/** Maximum allowed request body size (1 MiB). */
+const MAX_BODY_SIZE = 1024 * 1024;
+
 /** Read a JSON body from an incoming HTTP request. */
 async function readJsonBody(req: import("node:http").IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
+  let totalLength = 0;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalLength += buf.length;
+    if (totalLength > MAX_BODY_SIZE) {
+      throw new Error("Request body too large");
+    }
+    chunks.push(buf);
   }
   if (chunks.length === 0) return undefined;
   const text = Buffer.concat(chunks).toString("utf8");

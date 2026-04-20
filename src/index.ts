@@ -1,7 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createRequire } from "node:module";
 import { z } from "zod";
 import { EmbyClient } from "@emby-utils/client";
 import { EmbyMcpHandler } from "./handler.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 
 export { EmbyMcpHandler } from "./handler.js";
 export type { McpTextContent, McpToolResponse } from "./handler.js";
@@ -14,7 +18,7 @@ export type { McpTextContent, McpToolResponse } from "./handler.js";
 export function createServer(handler: EmbyMcpHandler): McpServer {
   const server = new McpServer({
     name: "Emby MCP Server",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   // --- Semantic, high-traffic tools ---
