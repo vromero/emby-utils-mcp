@@ -95,8 +95,11 @@ Alternatively, `npm link` works for a symlink-based workflow.
 ## Publishing
 
 - Published to npm as `@emby-utils/server` (scope-public). `publishConfig.access: "public"` in `package.json`.
-- A `prepack` script runs `npm run build` so `npm publish` (or `npm pack`) always ships a fresh `dist/`.
-- Flow: bump `version` in `package.json`, `npm run release:dry` to preview the tarball contents, `npm run release` to publish. Finally tag `vX.Y.Z` in git and push to trigger `.github/workflows/docker-publish.yml`.
+- A `prepack` script runs `npm run build` so `npm publish` (or `npm pack`) always ships a fresh `dist/`. Used locally when previewing a release with `npm run release:dry`.
+- **Releases run in CI, not locally.** `.github/workflows/npm-publish.yml` is triggered on `v*` tag pushes: it verifies the tag matches `package.json#version`, runs the test suite, then `npm publish --access public --provenance` using the `NPM_TOKEN` repo secret (an npm Automation token).
+- Release flow: bump `version` in `package.json` → commit → push → tag `vX.Y.Z` → push the tag. `npm-publish.yml` and `docker-publish.yml` both trigger on the tag, publishing to npm and GHCR in parallel.
+- To preview a publish locally: `npm run release:dry` (builds, then runs `npm publish --dry-run`).
+- The workflow uses `--provenance`, which requires `id-token: write` permission and publishes signed attestations linking the npm tarball to the GitHub Actions run that produced it. Both are already configured in the workflow file.
 
 ## CI
 
