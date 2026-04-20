@@ -4,11 +4,12 @@
 # node:22-alpine with only production deps and compiled dist/.
 #
 # Build from the repo root (context must be the repo root because the
-# Dockerfile copies from `src/`, `config/`, and `local/`):
+# Dockerfile copies from `src/` and `config/`):
 #
 #   docker build -f docker/Dockerfile -t emby-utils-mcp:dev .
 #
 # Or via the npm script wrappers:
+#   npm run docker:build
 #   npm run docker:up     # docker compose up -d
 #   npm run docker:down
 #
@@ -17,19 +18,10 @@
 #     -e EMBY_HOST=... -e EMBY_API_KEY=... \
 #     ghcr.io/vromero/emby-utils-mcp
 #
-# Build arg CLIENT_TARBALL (optional): when set, must be a path **inside the
-# build context** to a pre-built `@emby-utils/client` .tgz (produced by
-# `npm pack` in the client repo). Used for local development before the
-# client is published to npm. Default convention is to drop the tarball into
-# `local/` at the repo root, e.g.:
-#
-#   docker build \
-#     -f docker/Dockerfile \
-#     --build-arg CLIENT_TARBALL=local/emby-utils-client-0.1.0.tgz \
-#     -t emby-utils-mcp:dev .
-#
-# When unset, the build installs `@emby-utils/client` from the registry like
-# any other dep.
+# `@emby-utils/client` is declared in package.json as a GitHub dependency
+# (`github:vromero/emby-utils-client#main`). npm clones and builds it during
+# install via the client's `prepare` script, so no pre-packed tarball or
+# registry publish is required.
 #
 # Ignore file: `docker/Dockerfile.dockerignore` (BuildKit picks it up
 # automatically when building with `-f docker/Dockerfile`).
@@ -39,27 +31,20 @@
 ############################################
 FROM node:22-alpine AS build
 
+# `git` is needed so npm can clone the `@emby-utils/client` GitHub
+# dependency; Alpine doesn't ship it in the base image.
+RUN apk add --no-cache git
+
 WORKDIR /app
+
+# Skip husky's prepare in every `npm install` run below. husky v9 already
+# short-circuits when there is no `.git/` dir (the error message is
+# harmless), but setting HUSKY=0 makes the skip explicit and avoids noise.
+ENV HUSKY=0
 
 # Install deps first so the layer caches independently of source changes.
 COPY package.json package-lock.json* ./
-
-# Optional local @emby-utils/client tarball. The `local/` directory always
-# exists (tracked via .gitkeep) so the COPY never fails. When CLIENT_TARBALL
-# is set, we pass it as an explicit install target in the same `npm install`
-# that resolves the rest of the deps — this overrides package.json's
-# declared spec so npm doesn't try to re-fetch the registry version.
-#
-# `--ignore-scripts` skips the `prepare` (husky) script which would fail
-# inside the image because there is no `.git` dir.
-ARG CLIENT_TARBALL=""
-COPY local/ ./local/
-RUN if [ -n "${CLIENT_TARBALL}" ] && [ -f "./${CLIENT_TARBALL}" ]; then \
-      echo "Installing with local @emby-utils/client from ${CLIENT_TARBALL}" && \
-      npm install --no-audit --no-fund --ignore-scripts "./${CLIENT_TARBALL}"; \
-    else \
-      npm install --no-audit --no-fund --ignore-scripts; \
-    fi
+RUN npm ci --no-audit --no-fund
 
 # Copy configs + sources, then compile.
 COPY config/tsconfig.json config/tsconfig.build.json ./config/

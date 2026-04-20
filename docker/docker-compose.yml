@@ -13,22 +13,16 @@
 #
 # MCP clients that support the Streamable HTTP transport can then point at
 # `http://localhost:3000/mcp`.
-#
-# To build locally against a not-yet-published @emby-utils/client tarball,
-# drop the tarball into `local/` at the repo root (see local/README.md) and
-# uncomment the `build` block below.
 
 services:
   emby-mcp:
     image: ghcr.io/vromero/emby-utils-mcp:latest
     # Uncomment to build locally instead of pulling from GHCR. Build context
-    # is the repo root so the Dockerfile can `COPY src`, `COPY config/...`,
-    # and `COPY local/...` as usual.
+    # is the repo root so the Dockerfile can `COPY src` and `COPY config/...`
+    # as usual.
     # build:
     #   context: ..
     #   dockerfile: docker/Dockerfile
-    #   args:
-    #     CLIENT_TARBALL: ""   # e.g. local/emby-utils-client-0.1.0.tgz
     container_name: emby-mcp
     restart: unless-stopped
     ports:

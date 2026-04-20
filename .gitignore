@@ -28,16 +28,6 @@ Thumbs.db
 # Test artefacts
 *.msw-cache
 
-# `local/` is a staging directory for ephemeral build inputs (e.g. a
-# @emby-utils/client .tgz produced by `npm pack`). Only README.md and
-# .gitkeep are tracked.
-local/*
-!local/README.md
-!local/.gitkeep
-
 # Compose reads docker/.env (adjacent to docker/docker-compose.yml).
 docker/.env
-
-# The .husky/ directory is no longer used; husky hooks now live in
-# .config/husky/ (see the `prepare` script in package.json).
 

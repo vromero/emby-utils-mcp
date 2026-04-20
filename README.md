@@ -20,7 +20,6 @@ src/              TypeScript sources (entrypoint: src/bin.ts)
 tests/            Vitest suite
 config/           tsconfig, eslint, prettier, vitest configs
 docker/           Dockerfile, docker-compose.yml, .env.example, ignore file
-local/            Gitignored staging for ephemeral build inputs (e.g. .tgz)
 .config/husky/    Git hooks (installed by husky on `npm install`)
 ```
 

@@ -4,7 +4,7 @@
 
 Standalone npm package `@emby-utils/server`. An MCP (Model Context Protocol) server that exposes the full Emby API to MCP-capable LLM clients over **HTTP / Streamable HTTP with SSE** (no stdio transport). Binary: `emby-mcp-server` (`src/bin.ts`). Listens on `0.0.0.0:3000` by default.
 
-Depends on the separately-published `@emby-utils/client` (GitHub: `vromero/emby-utils-client`). A sibling CLI package ships from `vromero/emby-utils-cli`.
+Depends on `@emby-utils/client`, which is installed **directly from GitHub** (`github:vromero/emby-utils-client#main`) rather than from the npm registry. The client's `prepare` script compiles it to `dist/` during install, so consumers receive a ready-to-use package without any pre-publish step. A sibling CLI package ships from `vromero/emby-utils-cli`.
 
 The `emby-mcp-server` binary name intentionally keeps the `mcp` marker so users can tell what protocol the service speaks; the npm package is scoped under `@emby-utils/`.
 
@@ -20,7 +20,6 @@ Tooling and ops configs are grouped under subdirectories to keep the root lean:
 | `tests/`         | Vitest suite. MSW setup in `tests/setup.ts`; host/key constants in `tests/constants.ts`.                                  |
 | `config/`        | `tsconfig.json`, `tsconfig.build.json`, `eslint.config.js`, `prettier.config.mjs`, `.prettierignore`, `vitest.config.ts`. |
 | `docker/`        | `Dockerfile`, `Dockerfile.dockerignore`, `docker-compose.yml`, `.env.example`, `README.md`.                               |
-| `local/`         | Gitignored staging for ephemeral build inputs (`*.tgz` for `CLIENT_TARBALL`).                                             |
 | `.config/husky/` | Pre-commit hook. Husky is wired via `"prepare": "husky .config/husky"` in `package.json`.                                 |
 | `.changeset/`    | Changesets metadata (tool-locked path).                                                                                   |
 | `.github/`       | CI + release workflows (tool-locked path).                                                                                |
@@ -68,22 +67,21 @@ All `npm` scripts invoke the underlying tools with explicit `-c` / `-p` / `--con
 - `tests/mcp-server.test.ts` reaches into `McpServer._registeredTools` (private). If the SDK changes its internals, update this test rather than deleting it.
 - `tests/http.test.ts` **does not** import `./setup.js`. The MSW server registered there has `onUnhandledRequest: "error"` and would reject the real fetches the test issues to our own loopback HTTP server. The HTTP tests only exercise endpoints that never touch Emby (`/healthz`, MCP `initialize`), so MSW isn't needed.
 - `StreamableHTTPServerTransport` is run in **stateless** mode (`sessionIdGenerator: undefined`). No in-memory session state, so the container scales horizontally without sticky sessions.
-- The Dockerfile accepts a `CLIENT_TARBALL` build-arg that points at a file inside the build context. Default staging path is `local/<tarball>.tgz` (the `local/` dir is gitignored and always present via `.gitkeep`). Used to build the image against a locally-packed `@emby-utils/client` before it is published to npm; once published, the arg can be omitted and the Dockerfile resolves the dep from the registry.
+- The Dockerfile installs `git` in the build stage because npm needs it to clone the `github:vromero/emby-utils-client` dependency. Sets `HUSKY=0` so the dev-dep's husky `prepare` skip is explicit rather than relying on husky's silent no-op when `.git` is absent.
 
 ## Cross-repo development
 
-To test against an unreleased `@emby-utils/client`:
+To test against local, unreleased `@emby-utils/client` changes, point the dependency at a local path instead of the GitHub ref:
 
 ```bash
-# In the emby-utils-client clone:
-npm run build
-npm link
-
-# Here:
-npm link @emby-utils/client
+# In this repo:
+npm install --save ../emby-utils-client
+# ...iterate...
+# When done, restore the GitHub ref:
+npm install --save "github:vromero/emby-utils-client#main"
 ```
 
-Unlink with `npm unlink --global @emby-utils/client`.
+Alternatively, `npm link` still works if you prefer a symlink-based workflow.
 
 ## Testing
 
